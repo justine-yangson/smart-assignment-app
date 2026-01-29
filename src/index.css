@@ -1,0 +1,158 @@
+:root {
+  --bg: #f4f6fb;
+  --card: #ffffff;
+  --text: #111827;
+  --muted: #6b7280;
+  --primary: #6366f1;
+  --danger: #ef4444;
+}
+
+body.dark {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.container {
+  max-width: 420px;
+  margin: auto;
+  padding: 16px;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 16px;
+  transition: color 0.3s ease;
+}
+
+.card {
+  background: var(--card);
+  padding: 16px;
+  border-radius: 16px;
+  box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+input {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+  font-size: 15px;
+  transition: background 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+button {
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+button:hover {
+  transform: scale(1.05);
+  background: #4f46e5;
+}
+
+.list {
+  margin-top: 20px;
+}
+
+.deadline {
+  background: var(--card);
+  padding: 14px;
+  border-radius: 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+
+.deadline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.deadline small {
+  color: var(--muted);
+}
+
+.pending span {
+  color: var(--primary);
+}
+
+.overdue {
+  border-left: 5px solid var(--danger);
+}
+
+.overdue span {
+  color: var(--danger);
+}
+
+/* Theme toggle button */
+.theme-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.theme-btn:hover {
+  transform: scale(1.2);
+}
+
+/* Bottom navigation */
+.nav {
+  position: sticky;
+  bottom: 0;
+  background: var(--card);
+  display: flex;
+  justify-content: space-around;
+  padding: 12px 0;
+  border-top: 1px solid #e5e7eb;
+  transition: background 0.3s ease;
+}
+
+.nav a {
+  text-decoration: none;
+  font-weight: 600;
+  color: var(--primary);
+  transition: color 0.3s ease;
+}
+
+/* MOBILE-FRIENDLY */
+@media (max-width: 480px) {
+  .container {
+    padding: 12px;
+  }
+
+  input, button {
+    font-size: 14px;
+    padding: 10px;
+  }
+
+  .card {
+    padding: 12px;
+  }
+
+  .deadline {
+    padding: 12px;
+  }
+}
