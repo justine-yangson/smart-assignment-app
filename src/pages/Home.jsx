@@ -46,7 +46,7 @@ export default function Home({ list, setList, alertAudio, loading, lastSync }) {
   const markCompleted = async (item) => {
     setUpdatingIds(prev => [...prev, item._id]);
     try {
-      const res = await fetch(`/api/assignments/${item._id}`, {
+      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, {
         method: "PATCH",  // <-- FIXED: Changed from PUT to PATCH
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "completed" }),
@@ -66,7 +66,7 @@ export default function Home({ list, setList, alertAudio, loading, lastSync }) {
   const deleteTask = async (item) => {
     if (!confirm(`Delete "${item.task}"?`)) return;
     try {
-      const res = await fetch(`/api/assignments/${item._id}`, { method: "DELETE" });
+      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
       setList(prev => prev.filter(a => a._id !== item._id));
     } catch (err) {

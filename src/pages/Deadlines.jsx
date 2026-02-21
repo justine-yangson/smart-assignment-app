@@ -106,7 +106,7 @@ export default function Deadlines({ list, setList, alertAudio }) {
     setList(prev => prev.map(i => i._id === item._id ? { ...i, status: newStatus } : i));
 
     try {
-      const res = await fetch(`/api/assignments/${item._id}`, {
+      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, {
         method: "PATCH",  // <-- FIXED: Changed from PUT to PATCH
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -128,7 +128,7 @@ export default function Deadlines({ list, setList, alertAudio }) {
     setUpdatingIds(prev => [...prev, item._id]);
     
     try {
-      const res = await fetch(`/api/assignments/${item._id}`, { method: "DELETE" });
+      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
       setList(prev => prev.filter(i => i._id !== item._id));
     } catch (err) {
@@ -157,7 +157,7 @@ export default function Deadlines({ list, setList, alertAudio }) {
     setUpdatingIds(prev => [...prev, id]);
     
     try {
-      const res = await fetch(`/api/assignments/${id}`, {
+      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${id}`, {
         method: "PATCH",  // <-- FIXED: Changed from PUT to PATCH
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(editData),

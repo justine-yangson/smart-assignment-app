@@ -108,7 +108,7 @@ export default function AddAssignment({ list, setList, setCurrentTab, onAssignme
     };
 
     try {
-      const res = await fetch("/api/assignments", {
+      const res = await fetch("https://smart-assignment-app.onrender.com/api/assignments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newTask),
