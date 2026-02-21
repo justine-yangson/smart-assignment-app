@@ -1,12 +1,23 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import { VitePWA } from 'vite-plugin-pwa';
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: "autoUpdate",
+      devOptions: {
+        enabled: false,
+      },
+      workbox: {
+        runtimeCaching: [
+          {
+            urlPattern: /^\/api\/.*$/,
+            handler: "NetworkOnly",
+          },
+        ],
+      },
       manifest: {
         name: "Smart Assignment Reminder",
         short_name: "Assignments",
@@ -17,17 +28,29 @@ export default defineConfig({
         start_url: "/",
         icons: [
           {
-            src: "web-app-manifest-192x192",
+            src: "web-app-manifest-192x192.png",
             sizes: "192x192",
-            type: "image/png"
+            type: "image/png",
           },
           {
-            src: "web-app-manifest-512x512",
+            src: "web-app-manifest-512x512.png",
             sizes: "512x512",
-            type: "image/png"
-          }
-        ]
-      }
-    })
-  ]
+            type: "image/png",
+          },
+        ],
+      },
+    }),
+  ],
+  server: {
+    port: 5173, // Force port 5173
+    strictPort: true,
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api/, '/api'),
+      },
+    },
+  },
 });
