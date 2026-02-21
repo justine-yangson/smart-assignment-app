@@ -86,7 +86,7 @@ function AppContent() {
   const fetchAssignments = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await fetch("https://weak-groups-dance.loca.lt/api/assignments");
+      const res = await fetch("https://smart-assignment-app.onrender.com/api/assignments");
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       const result = await res.json();
       
@@ -197,7 +197,7 @@ function AppContent() {
       }
 
       // Use bulk delete endpoint
-      const res = await fetch("https://weak-groups-dance.loca.lt/api/assignments/bulk/delete", {
+      const res = await fetch("https://smart-assignment-app.onrender.com/api/assignments/bulk/delete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids }),
