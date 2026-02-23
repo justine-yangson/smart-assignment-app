@@ -15,13 +15,39 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // Security Middleware
 app.use(helmet());
 
-// CORS Configuration
+// FIXED: CORS Configuration - Allow multiple origins including all Vercel deployments
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://smart-assignment-app.vercel.app',
+  'https://smart-assignment-6t2wpa6ue-justines-projects-48688ae7.vercel.app',
+  process.env.FRONTEND_URL
+].filter(Boolean);
+
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || ["http://localhost:5173", "https://smart-assignment-app.vercel.app"],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl, or same-origin)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is allowed
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      // Check if it's a vercel.app subdomain (preview deployments)
+      if (origin.includes('vercel.app')) {
+        console.log('Allowing Vercel preview deployment:', origin);
+        callback(null, true);
+      } else {
+        console.log('CORS blocked origin:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 };
+
 app.use(cors(corsOptions));
 
 // Rate Limiting
@@ -73,7 +99,7 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({
     status: "OK",
     timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
+    uptime: process.env.uptime(),
     environment: process.env.NODE_ENV || "development"
   });
 });
@@ -163,6 +189,7 @@ connectDB().then(() => {
   server = app.listen(PORT, HOST, () => {
     console.log(`🚀 Server running on http://${HOST}:${PORT}`);
     console.log(`📁 Environment: ${process.env.NODE_ENV || "development"}`);
+    console.log(`🌐 Allowed origins:`, allowedOrigins);
   });
 });
 
