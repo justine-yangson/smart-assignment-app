@@ -10,11 +10,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@react-oauth/google": "^0.13.4",
     "axios": "^1.13.5",
     "expo": "^54.0.33",
     "expo-av": "~16.0.8",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
+    "jwt-decode": "^4.0.0",
     "lucide-react": "^0.574.0",
     "morgan": "^1.10.1",
     "react": "^19.2.0",

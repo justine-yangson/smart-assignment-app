@@ -1,5 +1,7 @@
 // src/App.jsx
 import { useState, useEffect, useRef, useCallback } from "react";
+import { GoogleLogin, googleLogout, useGoogleLogin } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
 import Home from "./pages/Home";
 import Deadlines from "./pages/Deadlines";
 import AddAssignment from "./pages/AddAssignment";
@@ -16,6 +18,10 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [lastSync, setLastSync] = useState(null);
+
+  // User authentication state
+  const [user, setUser] = useState(null);
+  const [credential, setCredential] = useState(null);
 
   // Alert system
   const alertAudio = useRef(new Audio(alertFile));
@@ -82,11 +88,57 @@ function AppContent() {
     localStorage.setItem("autoDark", "false");
   };
 
+  // ----------------------- Google OAuth Handlers -----------------------
+  const handleLoginSuccess = (credentialResponse) => {
+    const decoded = jwtDecode(credentialResponse.credential);
+    setUser(decoded);
+    setCredential(credentialResponse.credential);
+    localStorage.setItem("googleCredential", credentialResponse.credential);
+  };
+
+  const handleLogout = () => {
+    googleLogout();
+    setUser(null);
+    setCredential(null);
+    localStorage.removeItem("googleCredential");
+    setList([]); // Clear assignments on logout
+  };
+
+  // Restore session on mount
+  useEffect(() => {
+    const savedCredential = localStorage.getItem("googleCredential");
+    if (savedCredential) {
+      try {
+        const decoded = jwtDecode(savedCredential);
+        // Check if token is expired
+        if (decoded.exp * 1000 > Date.now()) {
+          setUser(decoded);
+          setCredential(savedCredential);
+        } else {
+          localStorage.removeItem("googleCredential");
+        }
+      } catch (err) {
+        localStorage.removeItem("googleCredential");
+      }
+    }
+  }, []);
+
   // ----------------------- Backend API -----------------------
   const fetchAssignments = useCallback(async () => {
+    if (!credential) {
+      setList([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await fetch("https://smart-assignment-app.onrender.com/api/assignments");
+      const res = await fetch("https://smart-assignment-app.onrender.com/api/assignments", {
+        headers: {
+          "Authorization": `Bearer ${credential}`
+        }
+      });
+      
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       const result = await res.json();
       
@@ -102,7 +154,7 @@ function AppContent() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [credential]);
 
   useEffect(() => {
     fetchAssignments();
@@ -199,7 +251,10 @@ function AppContent() {
       // Use bulk delete endpoint
       const res = await fetch("https://smart-assignment-app.onrender.com/api/assignments/bulk/delete", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${credential}`
+        },
         body: JSON.stringify({ ids }),
       });
 
@@ -218,7 +273,59 @@ function AppContent() {
 
   const toggleAlerts = () => setAlertsEnabled(prev => !prev);
 
-  // ----------------------- Render -----------------------
+  // ----------------------- Login Screen -----------------------
+  if (!user) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${isDark ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full mx-4 text-center">
+          <div className="mb-6">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl mx-auto flex items-center justify-center mb-4">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              Smart Assignment Reminder
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              Sign in to manage your assignments and never miss a deadline
+            </p>
+          </div>
+          
+          <div className="flex justify-center">
+            <GoogleLogin
+              onSuccess={handleLoginSuccess}
+              onError={() => console.log("Login Failed")}
+              theme={isDark ? "filled_black" : "outline"}
+              size="large"
+              text="signin_with"
+              shape="pill"
+            />
+          </div>
+
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title="Toggle theme"
+            >
+              {isDark ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 24.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ----------------------- Main App Render -----------------------
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'dark bg-gray-900' : 'bg-gray-50'}`}>
       {/* Main App Container */}
@@ -243,6 +350,18 @@ function AppContent() {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* User Profile */}
+              <div className="flex items-center gap-2 mr-2">
+                <img 
+                  src={user.picture} 
+                  alt={user.name}
+                  className="w-8 h-8 rounded-full border-2 border-gray-200 dark:border-gray-600"
+                />
+                <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300 truncate max-w-[120px]">
+                  {user.name}
+                </span>
+              </div>
+
               {/* Notification Bell */}
               <NotificationBell assignments={list} />
               
@@ -266,6 +385,17 @@ function AppContent() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
                   </svg>
                 )}
+              </button>
+
+              {/* Logout Button */}
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                title="Logout"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
               </button>
             </div>
           </div>
@@ -320,6 +450,7 @@ function AppContent() {
               alertAudio={alertAudio.current}
               loading={loading}
               lastSync={lastSync}
+              credential={credential}
             />
           )}
           {currentTab === "add" && (
@@ -328,6 +459,7 @@ function AppContent() {
               setList={setList} 
               setCurrentTab={setCurrentTab}
               onAssignmentAdded={fetchAssignments}
+              credential={credential}
             />
           )}
           {currentTab === "deadlines" && (
@@ -335,6 +467,7 @@ function AppContent() {
               list={list} 
               setList={setList} 
               alertAudio={alertAudio.current}
+              credential={credential}
             />
           )}
         </main>
@@ -379,6 +512,8 @@ function AppContent() {
           disableAutoDark={disableAutoDark}
           alertsEnabled={alertsEnabled}
           toggleAlerts={toggleAlerts}
+          user={user}
+          onLogout={handleLogout}
         />
       </div>
     </div>

@@ -11,7 +11,7 @@ import {
   Clock
 } from "lucide-react";
 
-export default function AddAssignment({ list, setList, setCurrentTab, onAssignmentAdded }) {
+export default function AddAssignment({ list, setList, setCurrentTab, onAssignmentAdded, credential }) {
   const [formData, setFormData] = useState({
     subject: "",
     task: "",
@@ -110,7 +110,10 @@ export default function AddAssignment({ list, setList, setCurrentTab, onAssignme
     try {
       const res = await fetch("https://smart-assignment-app.onrender.com/api/assignments", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${credential}`
+        },
         body: JSON.stringify(newTask),
       });
 

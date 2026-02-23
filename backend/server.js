@@ -4,16 +4,20 @@ const cors = require("cors");
 const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
+const { OAuth2Client } = require("google-auth-library"); // ADDED: Google OAuth
 require("dotenv").config();
 
 const app = express();
+
+// ADDED: Google OAuth client
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Security Middleware
 app.use(helmet());
 
 // CORS Configuration
 const corsOptions = {
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  origin: process.env.FRONTEND_URL || ["http://localhost:5173", "https://smart-assignment-app.vercel.app"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
@@ -39,6 +43,31 @@ if (process.env.NODE_ENV !== "production") {
   app.use(morgan("combined"));
 }
 
+// ADDED: Verify Google Token Middleware
+const verifyGoogleToken = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "No token provided" });
+  }
+
+  const token = authHeader.substring(7);
+  
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    
+    const payload = ticket.getPayload();
+    req.userEmail = payload.email;
+    req.userName = payload.name;
+    next();
+  } catch (err) {
+    console.error("Token verification failed:", err);
+    return res.status(401).json({ error: "Invalid token" });
+  }
+};
+
 // Health Check Route
 app.get("/api/health", (req, res) => {
   res.status(200).json({
@@ -49,8 +78,8 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// API Routes
-app.use("/api/assignments", require("./routes/assignments"));
+// MODIFIED: Added verifyGoogleToken middleware
+app.use("/api/assignments", verifyGoogleToken, require("./routes/assignments"));
 
 // 404 Handler
 app.use((req, res) => {

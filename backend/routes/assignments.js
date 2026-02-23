@@ -6,7 +6,9 @@ const Assignment = require("../models/Assignment");
 router.get("/", async (req, res) => {
   try {
     const { status, priority, overdue, upcoming, search, limit = 50, skip = 0 } = req.query;
-    const filter = {};
+    
+    // ADDED: Filter by user email from auth token
+    const filter = { userEmail: req.userEmail };
 
     // Status filter
     if (status) filter.status = status;
@@ -76,15 +78,20 @@ router.get("/stats/overview", async (req, res) => {
   try {
     const now = new Date();
     
+    // MODIFIED: Added userEmail filter to all counts
+    const userFilter = { userEmail: req.userEmail };
+    
     const [total, completed, pending, overdue, dueSoon] = await Promise.all([
-      Assignment.countDocuments(),
-      Assignment.countDocuments({ status: "completed" }),
-      Assignment.countDocuments({ status: { $ne: "completed" } }),
+      Assignment.countDocuments(userFilter),
+      Assignment.countDocuments({ ...userFilter, status: "completed" }),
+      Assignment.countDocuments({ ...userFilter, status: { $ne: "completed" } }),
       Assignment.countDocuments({ 
+        ...userFilter,
         status: { $ne: "completed" }, 
         "deadlines.red": { $lt: now } 
       }),
       Assignment.countDocuments({
+        ...userFilter,
         status: { $ne: "completed" },
         "deadlines.red": { $gte: now, $lte: new Date(now.getTime() + 24 * 60 * 60 * 1000) }
       })
@@ -102,7 +109,12 @@ router.get("/stats/overview", async (req, res) => {
 // -------------------- GET single assignment by ID --------------------
 router.get("/:id", async (req, res) => {
   try {
-    const assignment = await Assignment.findById(req.params.id).lean();
+    // MODIFIED: Added userEmail filter
+    const assignment = await Assignment.findOne({ 
+      _id: req.params.id,
+      userEmail: req.userEmail 
+    }).lean();
+    
     if (!assignment) {
       return res.status(404).json({ success: false, error: "Assignment not found" });
     }
@@ -179,6 +191,8 @@ router.post("/", async (req, res) => {
     }
 
     const newAssignment = new Assignment({
+      // ADDED: userEmail from auth token
+      userEmail: req.userEmail,
       subject: subject.trim(),
       task: task.trim(),
       deadlines: { green, yellow, red },
@@ -224,7 +238,12 @@ router.patch("/:id", async (req, res) => {
 
     // Handle deadline updates separately
     if (req.body.deadlines) {
-      const current = await Assignment.findById(req.params.id);
+      // MODIFIED: Added userEmail filter
+      const current = await Assignment.findOne({ 
+        _id: req.params.id,
+        userEmail: req.userEmail 
+      });
+      
       if (!current) {
         return res.status(404).json({ success: false, error: "Assignment not found" });
       }
@@ -244,8 +263,9 @@ router.patch("/:id", async (req, res) => {
       updateData.deadlines = { green, yellow, red };
     }
 
-    const updated = await Assignment.findByIdAndUpdate(
-      req.params.id,
+    // MODIFIED: Added userEmail filter
+    const updated = await Assignment.findOneAndUpdate(
+      { _id: req.params.id, userEmail: req.userEmail },
       updateData,
       { new: true, runValidators: true }
     );
@@ -286,8 +306,9 @@ router.put("/:id", async (req, res) => {
       return res.status(400).json({ success: false, error: "Dates must follow: Green < Yellow < Red" });
     }
 
-    const updated = await Assignment.findByIdAndUpdate(
-      req.params.id,
+    // MODIFIED: Added userEmail filter
+    const updated = await Assignment.findOneAndUpdate(
+      { _id: req.params.id, userEmail: req.userEmail },
       {
         subject: subject.trim(),
         task: task.trim(),
@@ -313,7 +334,12 @@ router.put("/:id", async (req, res) => {
 // -------------------- DELETE assignment --------------------
 router.delete("/:id", async (req, res) => {
   try {
-    const deleted = await Assignment.findByIdAndDelete(req.params.id);
+    // MODIFIED: Added userEmail filter
+    const deleted = await Assignment.findOneAndDelete({ 
+      _id: req.params.id,
+      userEmail: req.userEmail 
+    });
+    
     if (!deleted) {
       return res.status(404).json({ success: false, error: "Assignment not found" });
     }
@@ -331,8 +357,9 @@ router.post("/bulk/complete", async (req, res) => {
       return res.status(400).json({ success: false, error: "Array of IDs required" });
     }
     
+    // MODIFIED: Added userEmail filter
     const result = await Assignment.updateMany(
-      { _id: { $in: ids } },
+      { _id: { $in: ids }, userEmail: req.userEmail },
       { status: "completed", completedAt: new Date() }
     );
     
@@ -349,7 +376,12 @@ router.post("/bulk/delete", async (req, res) => {
       return res.status(400).json({ success: false, error: "Array of IDs required" });
     }
     
-    const result = await Assignment.deleteMany({ _id: { $in: ids } });
+    // MODIFIED: Added userEmail filter
+    const result = await Assignment.deleteMany({ 
+      _id: { $in: ids },
+      userEmail: req.userEmail 
+    });
+    
     res.json({ success: true, deleted: result.deletedCount });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

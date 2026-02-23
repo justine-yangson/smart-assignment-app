@@ -52,6 +52,12 @@ const DeadlineSchema = new mongoose.Schema({
 }, { _id: false });
 
 const AssignmentSchema = new mongoose.Schema({
+  // ADDED: userEmail field to separate user data
+  userEmail: {
+    type: String,
+    required: true,
+    index: true
+  },
   subject: { 
     type: String, 
     required: [true, "Subject is required"],
@@ -106,9 +112,9 @@ const AssignmentSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes for better query performance
-AssignmentSchema.index({ status: 1, "deadlines.red": 1 });
-AssignmentSchema.index({ "deadlines.red": 1 });
+// MODIFIED: Added userEmail to indexes
+AssignmentSchema.index({ userEmail: 1, status: 1, "deadlines.red": 1 });
+AssignmentSchema.index({ userEmail: 1, "deadlines.red": 1 });
 AssignmentSchema.index({ subject: "text", task: "text" });
 
 // Virtual for checking if assignment is overdue

@@ -16,7 +16,7 @@ import {
   Loader2
 } from "lucide-react";
 
-export default function Deadlines({ list, setList, alertAudio }) {
+export default function Deadlines({ list, setList, alertAudio, credential }) {
   const [filter, setFilter] = useState("today");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -108,7 +108,10 @@ export default function Deadlines({ list, setList, alertAudio }) {
     try {
       const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, {
         method: "PATCH",  // <-- FIXED: Changed from PUT to PATCH
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${credential}`
+        },
         body: JSON.stringify({ status: newStatus }),
       });
       if (!res.ok) throw new Error("Failed to update");
@@ -128,7 +131,12 @@ export default function Deadlines({ list, setList, alertAudio }) {
     setUpdatingIds(prev => [...prev, item._id]);
     
     try {
-      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, { method: "DELETE" });
+      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, { 
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${credential}`
+        }
+      });
       if (!res.ok) throw new Error("Failed to delete");
       setList(prev => prev.filter(i => i._id !== item._id));
     } catch (err) {
@@ -159,7 +167,10 @@ export default function Deadlines({ list, setList, alertAudio }) {
     try {
       const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${id}`, {
         method: "PATCH",  // <-- FIXED: Changed from PUT to PATCH
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${credential}`
+        },
         body: JSON.stringify(editData),
       });
       

@@ -11,7 +11,7 @@ import {
   Bell
 } from "lucide-react";
 
-export default function Home({ list, setList, alertAudio, loading, lastSync }) {
+export default function Home({ list, setList, alertAudio, loading, lastSync, credential }) {
   const [updatingIds, setUpdatingIds] = useState([]);
   const [filter, setFilter] = useState("all"); // all, urgent, upcoming
   const playedIds = useRef(new Set());
@@ -48,7 +48,10 @@ export default function Home({ list, setList, alertAudio, loading, lastSync }) {
     try {
       const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, {
         method: "PATCH",  // <-- FIXED: Changed from PUT to PATCH
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${credential}`
+        },
         body: JSON.stringify({ status: "completed" }),
       });
       if (!res.ok) throw new Error("Failed to update");
@@ -66,7 +69,12 @@ export default function Home({ list, setList, alertAudio, loading, lastSync }) {
   const deleteTask = async (item) => {
     if (!confirm(`Delete "${item.task}"?`)) return;
     try {
-      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, { method: "DELETE" });
+      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, { 
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${credential}`
+        }
+      });
       if (!res.ok) throw new Error("Failed to delete");
       setList(prev => prev.filter(a => a._id !== item._id));
     } catch (err) {

@@ -9,7 +9,9 @@ import {
   Bell,
   BellOff,
   ChevronRight,
-  Info
+  Info,
+  LogOut,
+  User
 } from "lucide-react";
 
 export default function SettingsDrawer({
@@ -23,6 +25,8 @@ export default function SettingsDrawer({
   disableAutoDark,
   alertsEnabled,
   toggleAlerts,
+  user,
+  onLogout,
 }) {
   // Get auto dark status from localStorage
   const autoDark = localStorage.getItem("autoDark") === "true";
@@ -43,6 +47,13 @@ export default function SettingsDrawer({
   const handleClearCompleted = () => {
     clearCompleted();
     onClose(); // Close drawer after clearing
+  };
+
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to logout?")) {
+      onLogout();
+      onClose();
+    }
   };
 
   const menuItems = [
@@ -126,6 +137,36 @@ export default function SettingsDrawer({
 
         {/* Menu Content */}
         <div className="p-4 space-y-6 overflow-y-auto h-[calc(100vh-100px)]">
+          {/* User Profile Section */}
+          {user && (
+            <div className="mb-6">
+              <h3 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3 px-2">
+                Account
+              </h3>
+              <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center gap-3 mb-4">
+                  <img 
+                    src={user.picture} 
+                    alt={user.name}
+                    className="w-12 h-12 rounded-full border-2 border-white dark:border-gray-600 shadow-sm"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900 dark:text-white truncate">{user.name}</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg font-medium transition-colors"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              </div>
+              <div className="mt-6 border-b border-gray-200 dark:border-gray-800" />
+            </div>
+          )}
+
           {menuItems.map((section, idx) => (
             <div key={section.section}>
               <h3 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3 px-2">
