@@ -331,33 +331,37 @@ function AppContent() {
       {/* Main App Container */}
       <div className={`app-container ${drawerOpen ? 'drawer-open' : ''} ${isDark ? 'dark' : ''}`}>
         
-        {/* Modern Top Bar */}
+        {/* FIXED: Mobile-Responsive Top Bar */}
         <header className="sticky top-0 z-40 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+          <div className="max-w-4xl mx-auto px-2 sm:px-4 h-14 sm:h-16 flex items-center justify-between">
+            {/* Left: Menu + Title */}
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
               <button 
                 onClick={() => setDrawerOpen(true)}
-                className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
                 aria-label="Open settings"
               >
-                <svg className="w-6 h-6 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                 </svg>
               </button>
-              <h1 className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Smart Assignment Reminder
+              {/* FIXED: Responsive title - smaller on mobile, truncated */}
+              <h1 className="text-base sm:text-lg md:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent truncate">
+                <span className="hidden sm:inline">Smart Assignment Reminder</span>
+                <span className="sm:hidden">Assignments</span>
               </h1>
             </div>
             
-            <div className="flex items-center gap-2">
-              {/* User Profile */}
-              <div className="flex items-center gap-2 mr-2">
+            {/* Right: Actions - more compact on mobile */}
+            <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+              {/* User Profile - hidden name on small mobile */}
+              <div className="flex items-center gap-1 sm:gap-2">
                 <img 
                   src={user.picture} 
                   alt={user.name}
-                  className="w-8 h-8 rounded-full border-2 border-gray-200 dark:border-gray-600"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-gray-200 dark:border-gray-600"
                 />
-                <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300 truncate max-w-[120px]">
+                <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300 truncate max-w-[80px] md:max-w-[120px]">
                   {user.name}
                 </span>
               </div>
@@ -365,10 +369,10 @@ function AppContent() {
               {/* Notification Bell */}
               <NotificationBell assignments={list} />
               
-              {/* Alert Toggle */}
+              {/* Alert Toggle - smaller on mobile */}
               <button
                 onClick={toggleAlerts}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-1.5 sm:p-2 rounded-lg transition-colors ${
                   alertsEnabled 
                     ? 'text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20' 
                     : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
@@ -376,11 +380,11 @@ function AppContent() {
                 title={alertsEnabled ? "Alerts enabled" : "Alerts muted"}
               >
                 {alertsEnabled ? (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                 ) : (
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
                   </svg>
@@ -390,10 +394,10 @@ function AppContent() {
               {/* Logout Button */}
               <button
                 onClick={handleLogout}
-                className="p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
+                className="p-1.5 sm:p-2 rounded-lg text-gray-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors"
                 title="Logout"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
               </button>
@@ -403,26 +407,26 @@ function AppContent() {
 
         {/* Error Banner */}
         {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 px-4 py-3">
+          <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 px-2 sm:px-4 py-2 sm:py-3">
             <div className="max-w-4xl mx-auto flex items-center justify-between">
-              <div className="flex items-center gap-2 text-red-700 dark:text-red-400">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex items-center gap-2 text-red-700 dark:text-red-400 min-w-0 flex-1">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-sm font-medium">{error}</span>
+                <span className="text-xs sm:text-sm font-medium truncate">{error}</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                 <button 
                   onClick={fetchAssignments}
-                  className="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium"
+                  className="text-xs sm:text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium"
                 >
                   Retry
                 </button>
                 <button 
                   onClick={dismissError}
-                  className="text-red-400 hover:text-red-600"
+                  className="text-red-400 hover:text-red-600 p-1"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -441,8 +445,8 @@ function AppContent() {
           </div>
         )}
 
-        {/* Main Content */}
-        <main className="max-w-4xl mx-auto px-4 py-6 pb-24">
+        {/* Main Content - adjusted padding for mobile */}
+        <main className="max-w-4xl mx-auto px-2 sm:px-4 py-4 sm:py-6 pb-24">
           {currentTab === "home" && (
             <Home 
               list={list} 

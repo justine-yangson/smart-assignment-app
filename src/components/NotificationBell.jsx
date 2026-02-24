@@ -185,30 +185,30 @@ export default function NotificationBell({ assignments }) {
 
   return (
     <div className="relative">
-      {/* Bell Button */}
+      {/* Bell Button - smaller on mobile */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        className="relative p-1.5 sm:p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
         {permission === 'granted' ? (
-          <BellRing className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+          <BellRing className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300" />
         ) : (
-          <Bell className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+          <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300" />
         )}
         
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center animate-bounce">
+          <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-[10px] sm:text-xs font-bold rounded-full flex items-center justify-center animate-bounce">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
-      {/* Dropdown */}
+      {/* FIXED: Mobile-responsive Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-            <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <div className="fixed sm:absolute right-0 sm:right-0 left-0 sm:left-auto top-14 sm:top-auto sm:mt-2 mx-2 sm:mx-0 sm:w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden max-h-[80vh] sm:max-h-none">
+          {/* Header - more compact on mobile */}
+          <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+            <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 text-sm sm:text-base">
               <Bell className="w-4 h-4" />
               Notifications
             </h3>
@@ -241,11 +241,11 @@ export default function NotificationBell({ assignments }) {
             </div>
           </div>
 
-          {/* Notification List */}
-          <div className="max-h-96 overflow-y-auto">
+          {/* Notification List - adjusted max height for mobile */}
+          <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
-                <Bell className="w-12 h-12 mx-auto mb-3 opacity-20" />
+              <div className="p-6 sm:p-8 text-center text-gray-500 dark:text-gray-400">
+                <Bell className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 opacity-20" />
                 <p className="text-sm">No notifications yet</p>
                 <p className="text-xs mt-1 opacity-75">
                   Deadline alerts will appear here
@@ -257,12 +257,12 @@ export default function NotificationBell({ assignments }) {
                   <div
                     key={notification.id}
                     onClick={() => markAsRead(notification.id)}
-                    className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors ${
+                    className={`p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-colors ${
                       !notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <div className={`w-2 h-2 rounded-full mt-2 ${getPhaseDot(notification.phase)}`} />
+                      <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${getPhaseDot(notification.phase)}`} />
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium ${
                           !notification.read 
@@ -271,10 +271,10 @@ export default function NotificationBell({ assignments }) {
                         }`}>
                           {notification.message}
                         </p>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400">
-                          <Clock className="w-3 h-3" />
-                          <span className={getPhaseColor(notification.phase)}>
-                            {notification.phase.toUpperCase()} Phase
+                        <div className="flex items-center gap-2 mt-1 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
+                          <Clock className="w-3 h-3 flex-shrink-0" />
+                          <span className={`px-1.5 py-0.5 rounded ${getPhaseColor(notification.phase)}`}>
+                            {notification.phase.toUpperCase()}
                           </span>
                           <span>•</span>
                           <span>
@@ -283,7 +283,7 @@ export default function NotificationBell({ assignments }) {
                         </div>
                       </div>
                       {!notification.read && (
-                        <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0" />
+                        <span className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-2" />
                       )}
                     </div>
                   </div>
@@ -293,10 +293,10 @@ export default function NotificationBell({ assignments }) {
           </div>
 
           {/* Footer */}
-          <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-center">
+          <div className="p-2 sm:p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-center">
             <button
               onClick={() => setIsOpen(false)}
-              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors w-full py-1"
             >
               Close
             </button>
@@ -304,10 +304,10 @@ export default function NotificationBell({ assignments }) {
         </div>
       )}
 
-      {/* Click outside to close */}
+      {/* Click outside to close - full screen overlay on mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40"
+          className="fixed inset-0 z-40 bg-black/20 sm:bg-transparent"
           onClick={() => setIsOpen(false)}
         />
       )}
