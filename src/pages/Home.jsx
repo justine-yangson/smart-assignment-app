@@ -7,16 +7,14 @@ import {
   Calendar, 
   BookOpen,
   Loader2,
-  MoreVertical,
   Bell
 } from "lucide-react";
 
-export default function Home({ list, setList, alertAudio, loading, lastSync, credential }) {
+export default function Home({ list, setList, alertAudio, loading, lastSync }) {
   const [updatingIds, setUpdatingIds] = useState([]);
-  const [filter, setFilter] = useState("all"); // all, urgent, upcoming
+  const [filter, setFilter] = useState("all");
   const playedIds = useRef(new Set());
 
-  // Memoized filtered and sorted assignments
   const assignments = useMemo(() => {
     const now = new Date();
     
@@ -35,55 +33,31 @@ export default function Home({ list, setList, alertAudio, loading, lastSync, cre
       .sort((a, b) => {
         const aRed = new Date(a.deadlines?.red || a.deadline);
         const bRed = new Date(b.deadlines?.red || b.deadline);
-        return aRed - bRed; // Sort by urgency (closest deadline first)
+        return aRed - bRed;
       });
   }, [list, filter]);
 
   const completedCount = list.filter(i => i.status === "completed").length;
   const pendingCount = list.filter(i => i.status !== "completed").length;
 
-  // Mark as completed - FIXED: Changed from PUT to PATCH
-  const markCompleted = async (item) => {
+  // Mark as completed - LOCAL ONLY
+  const markCompleted = (item) => {
     setUpdatingIds(prev => [...prev, item._id]);
-    try {
-      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, {
-        method: "PATCH",  // <-- FIXED: Changed from PUT to PATCH
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${credential}`
-        },
-        body: JSON.stringify({ status: "completed" }),
-      });
-      if (!res.ok) throw new Error("Failed to update");
-      
-      setList(prev => prev.map(a => a._id === item._id ? { ...a, status: "completed" } : a));
-    } catch (err) {
-      console.error(err);
-      alert("Failed to update assignment");
-    } finally {
+    
+    // Update local state only
+    setList(prev => prev.map(a => a._id === item._id ? { ...a, status: "completed" } : a));
+    
+    setTimeout(() => {
       setUpdatingIds(prev => prev.filter(id => id !== item._id));
-    }
+    }, 300);
   };
 
-  // Delete task
-  const deleteTask = async (item) => {
+  // Delete task - LOCAL ONLY
+  const deleteTask = (item) => {
     if (!confirm(`Delete "${item.task}"?`)) return;
-    try {
-      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, { 
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${credential}`
-        }
-      });
-      if (!res.ok) throw new Error("Failed to delete");
-      setList(prev => prev.filter(a => a._id !== item._id));
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete assignment");
-    }
+    setList(prev => prev.filter(a => a._id !== item._id));
   };
 
-  // Get deadline status and styling
   const getDeadlineStatus = (item) => {
     const now = new Date();
     const deadlines = item.deadlines || { green: item.deadline, yellow: item.deadline, red: item.deadline };
@@ -131,7 +105,6 @@ export default function Home({ list, setList, alertAudio, loading, lastSync, cre
     };
   };
 
-  // Format relative time
   const getRelativeTime = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -164,13 +137,6 @@ export default function Home({ list, setList, alertAudio, loading, lastSync, cre
         if (color && !playedIds.current.has(`${item._id}-${color}`)) {
           alertAudio?.play().catch(() => {});
           playedIds.current.add(`${item._id}-${color}`);
-          
-          if (Notification.permission === "granted") {
-            new Notification(`⏰ ${color.toUpperCase()} Alert: ${item.subject}`, {
-              body: `${item.task}\nDeadline: ${new Date(red).toLocaleString()}`,
-              icon: "/alert-icon.png",
-            });
-          }
         }
       });
     };
@@ -252,7 +218,7 @@ export default function Home({ list, setList, alertAudio, loading, lastSync, cre
       {/* Last Sync Info */}
       {lastSync && (
         <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-          Last updated: {lastSync.toLocaleTimeString()}
+          Saved locally: {lastSync.toLocaleTimeString()}
         </p>
       )}
 
@@ -319,7 +285,7 @@ export default function Home({ list, setList, alertAudio, loading, lastSync, cre
                     )}
                   </div>
 
-                  {/* Progress Bar for multi-stage deadlines */}
+                  {/* Progress Bar */}
                   {item.deadlines && (
                     <div className="mt-3 flex gap-1">
                       <div className="h-1.5 flex-1 rounded-full bg-emerald-200 dark:bg-emerald-900/50" title="Green phase" />

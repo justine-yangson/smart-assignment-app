@@ -11,7 +11,12 @@ import {
   Clock
 } from "lucide-react";
 
-export default function AddAssignment({ list, setList, setCurrentTab, onAssignmentAdded, credential }) {
+// Generate unique ID locally
+const generateId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+};
+
+export default function AddAssignment({ list, setList, setCurrentTab }) {
   const [formData, setFormData] = useState({
     subject: "",
     task: "",
@@ -24,19 +29,17 @@ export default function AddAssignment({ list, setList, setCurrentTab, onAssignme
   const [loading, setLoading] = useState(false);
   const [touched, setTouched] = useState({});
 
-  // Get today's datetime-local format
   const getMinDateTime = () => {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     return now.toISOString().slice(0, 16);
   };
 
-  // Auto-calculate yellow and red if green is set
   useEffect(() => {
     if (formData.green && !formData.yellow && !formData.red) {
       const greenDate = new Date(formData.green);
-      const yellowDate = new Date(greenDate.getTime() + 2 * 24 * 60 * 60 * 1000); // +2 days
-      const redDate = new Date(greenDate.getTime() + 4 * 24 * 60 * 60 * 1000); // +4 days
+      const yellowDate = new Date(greenDate.getTime() + 2 * 24 * 60 * 60 * 1000);
+      const redDate = new Date(greenDate.getTime() + 4 * 24 * 60 * 60 * 1000);
       
       setFormData(prev => ({
         ...prev,
@@ -46,7 +49,6 @@ export default function AddAssignment({ list, setList, setCurrentTab, onAssignme
     }
   }, [formData.green]);
 
-  // Validation
   const validate = () => {
     const newErrors = {};
     
@@ -80,13 +82,12 @@ export default function AddAssignment({ list, setList, setCurrentTab, onAssignme
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setTouched(prev => ({ ...prev, [field]: true }));
-    // Clear error when user types
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
     setTouched({ subject: true, task: true, green: true, yellow: true, red: true });
@@ -96,6 +97,7 @@ export default function AddAssignment({ list, setList, setCurrentTab, onAssignme
     setLoading(true);
 
     const newTask = {
+      _id: generateId(), // Generate ID locally
       subject: formData.subject.trim(),
       task: formData.task.trim(),
       deadlines: {
@@ -107,43 +109,19 @@ export default function AddAssignment({ list, setList, setCurrentTab, onAssignme
       createdAt: new Date().toISOString()
     };
 
-    try {
-      const res = await fetch("https://smart-assignment-app.onrender.com/api/assignments", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${credential}`
-        },
-        body: JSON.stringify(newTask),
-      });
+    // Add to local state only
+    setList(prev => [...prev, newTask]);
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Failed to add assignment");
-      }
+    // Reset form
+    setFormData({ subject: "", task: "", green: "", yellow: "", red: "" });
+    setTouched({});
+    setErrors({});
+    setLoading(false);
 
-      // Refresh from server to get consistent data
-      if (onAssignmentAdded) {
-        await onAssignmentAdded();
-      }
-
-      // Reset form
-      setFormData({ subject: "", task: "", green: "", yellow: "", red: "" });
-      setTouched({});
-      setErrors({});
-
-      // Show success and switch tab
-      setCurrentTab("deadlines");
-      
-    } catch (err) {
-      console.error("Error adding assignment:", err);
-      setErrors(prev => ({ ...prev, submit: err.message }));
-    } finally {
-      setLoading(false);
-    }
+    // Switch to deadlines tab
+    setCurrentTab("deadlines");
   };
 
-  // Quick preset buttons
   const applyPreset = (days) => {
     const now = new Date();
     const green = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);

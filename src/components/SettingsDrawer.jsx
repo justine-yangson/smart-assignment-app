@@ -10,8 +10,8 @@ import {
   BellOff,
   ChevronRight,
   Info,
-  LogOut,
-  User
+  Bluetooth,
+  BluetoothOff
 } from "lucide-react";
 
 export default function SettingsDrawer({
@@ -25,10 +25,8 @@ export default function SettingsDrawer({
   disableAutoDark,
   alertsEnabled,
   toggleAlerts,
-  user,
-  onLogout,
+  isConnected,
 }) {
-  // Get auto dark status from localStorage
   const autoDark = localStorage.getItem("autoDark") === "true";
 
   const handleAutoDarkToggle = () => {
@@ -39,21 +37,14 @@ export default function SettingsDrawer({
     }
   };
 
-  const handleClearAll = async () => {
-    await clearAll();
-    onClose(); // Close drawer after clearing
+  const handleClearAll = () => {
+    clearAll();
+    onClose();
   };
 
   const handleClearCompleted = () => {
     clearCompleted();
-    onClose(); // Close drawer after clearing
-  };
-
-  const handleLogout = () => {
-    if (confirm("Are you sure you want to logout?")) {
-      onLogout();
-      onClose();
-    }
+    onClose();
   };
 
   const menuItems = [
@@ -74,6 +65,19 @@ export default function SettingsDrawer({
           onClick: handleAutoDarkToggle,
           active: autoDark,
           color: "text-blue-500"
+        }
+      ]
+    },
+    {
+      section: "IoT Box",
+      items: [
+        {
+          icon: isConnected ? Bluetooth : BluetoothOff,
+          label: isConnected ? "Box Connected" : "Box Disconnected",
+          description: isConnected ? "IoT box is ready" : "Connect your IoT box",
+          onClick: () => {},
+          active: isConnected,
+          color: isConnected ? "text-blue-500" : "text-gray-400"
         }
       ]
     },
@@ -115,13 +119,11 @@ export default function SettingsDrawer({
 
   return (
     <>
-      {/* Drawer */}
       <div 
         className={`fixed top-0 left-0 h-full w-80 bg-white dark:bg-gray-900 shadow-2xl transform transition-transform duration-300 ease-in-out z-50 ${
           isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-800">
           <div>
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Settings</h2>
@@ -135,38 +137,7 @@ export default function SettingsDrawer({
           </button>
         </div>
 
-        {/* Menu Content */}
         <div className="p-4 space-y-6 overflow-y-auto h-[calc(100vh-100px)]">
-          {/* User Profile Section */}
-          {user && (
-            <div className="mb-6">
-              <h3 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3 px-2">
-                Account
-              </h3>
-              <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-3 mb-4">
-                  <img 
-                    src={user.picture} 
-                    alt={user.name}
-                    className="w-12 h-12 rounded-full border-2 border-white dark:border-gray-600 shadow-sm"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-900 dark:text-white truncate">{user.name}</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">{user.email}</p>
-                  </div>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg font-medium transition-colors"
-                >
-                  <LogOut className="w-4 h-4" />
-                  Logout
-                </button>
-              </div>
-              <div className="mt-6 border-b border-gray-200 dark:border-gray-800" />
-            </div>
-          )}
-
           {menuItems.map((section, idx) => (
             <div key={section.section}>
               <h3 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3 px-2">
@@ -199,7 +170,7 @@ export default function SettingsDrawer({
                         <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform ${item.active ? 'translate-x-4' : 'translate-x-0'}`} />
                       </div>
                     )}
-                    {!item.active !== undefined && (
+                    {item.active === undefined && (
                       <ChevronRight className="w-5 h-5 text-gray-400" />
                     )}
                   </button>
@@ -211,17 +182,15 @@ export default function SettingsDrawer({
             </div>
           ))}
 
-          {/* Footer Info */}
           <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
             <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
               <Info className="w-4 h-4" />
-              <span>Smart Assignment Reminder v1.0</span>
+              <span>Smart Assignment Reminder v1.0 (Offline)</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Overlay */}
       <div 
         className={`fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 z-40 ${
           isOpen ? "opacity-100 visible" : "opacity-0 invisible"

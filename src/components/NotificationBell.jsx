@@ -1,26 +1,37 @@
-import { useState, useEffect, useRef } from 'react';
-import { Bell, BellRing, BellOff, Check, Trash2, Clock } from 'lucide-react';
-import { useNotifications } from '../context/NotificationContext';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Bell, BellRing, Check, Trash2, Clock, Wifi, Bluetooth, Smartphone } from 'lucide-react';
+import { useLocalNotifications } from '../hooks/useLocalNotifications';
+import { cancelAllNotifications } from '../services/notifications';
 
-export default function NotificationBell({ assignments }) {
+export default function NotificationBell({ assignments, isConnected, activeConnection, sendToIoTBox, onAssignmentAction }) {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
-  const [notifiedPhases, setNotifiedPhases] = useState(new Set());
   const [tick, setTick] = useState(0);
-  
-  // Call useNotifications at TOP LEVEL of component - not inside callbacks! [^28^][^31^]
-  const { permission, isSupported, requestPermission, notifyDeadline, notify } = useNotifications();
 
-  // Force re-render every 5 seconds to update phases in real-time
+  // Initialize local notifications - use showPrompt from hook instead of local state
+  const { permissionGranted, isReady, showPrompt, requestPermission } = useLocalNotifications(
+    assignments,
+    useCallback((action) => {
+      // Handle notification action from system tray
+      if (action.actionId === 'done') {
+        onAssignmentAction?.(action.assignmentId, 'complete');
+      } else if (action.actionId === 'start') {
+        onAssignmentAction?.(action.assignmentId, 'open');
+      } else if (action.actionId === 'snooze') {
+        // Handle snooze - reschedule for +15 minutes
+        console.log('Snoozing assignment:', action.assignmentId);
+      }
+    }, [onAssignmentAction])
+  );
+
+  // Re-render every 5 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTick(t => t + 1);
-    }, 5000);
+    const interval = setInterval(() => setTick(t => t + 1), 5000);
     return () => clearInterval(interval);
   }, []);
 
-  // Generate notifications from assignments - runs every tick
+  // Generate notifications from assignments
   useEffect(() => {
     if (!assignments) return;
     
@@ -35,7 +46,6 @@ export default function NotificationBell({ assignments }) {
       const yellowDate = new Date(yellow);
       const redDate = new Date(red);
 
-      // Show ALL active phases
       if (now >= redDate) {
         newNotifications.push({
           id: `${assignment._id}-red`,
@@ -84,68 +94,38 @@ export default function NotificationBell({ assignments }) {
     setUnreadCount(newNotifications.filter(n => !n.read).length);
   }, [assignments, tick]);
 
-  // Check for phase changes and trigger notifications
+  // Send to IoT box when connected
   useEffect(() => {
-    const checkDeadlines = () => {
+    if (!isConnected || !sendToIoTBox) return;
+
+    const sendAlerts = () => {
       const now = new Date();
       
-      assignments.forEach(assignment => {
-        if (assignment.status === 'completed') return;
-
-        const { green, yellow, red } = assignment.deadlines;
-        const greenDate = new Date(green);
-        const yellowDate = new Date(yellow);
-        const redDate = new Date(red);
-
-        const checkPhase = (phaseDate, phaseName, preNotify = false) => {
-          const timeSincePhaseStarted = now - phaseDate;
-          const timeUntilPhaseStarts = phaseDate - now;
-          const notificationId = `${assignment._id}-${phaseName}`;
-          
-          if (notifiedPhases.has(notificationId)) return;
-
-          // Notify when phase starts (within last 2 minutes)
-          if (timeSincePhaseStarted >= 0 && timeSincePhaseStarted < 120000) {
-            notifyDeadline(assignment, phaseName);
-            setNotifiedPhases(prev => new Set([...prev, notificationId]));
-          }
-          
-          // Pre-notification: 1 minute before phase starts
-          if (preNotify && timeUntilPhaseStarts > 0 && timeUntilPhaseStarts <= 60000) {
-            const preNotificationId = `${assignment._id}-${phaseName}-pre`;
-            if (!notifiedPhases.has(preNotificationId)) {
-              const titles = {
-                yellow: `🟡 ${assignment.subject} entering yellow phase soon`,
-                red: `🔴 ${assignment.subject} entering red phase soon`
-              };
-              const messages = {
-                yellow: `"${assignment.task}" will enter yellow phase in 1 minute!`,
-                red: `"${assignment.task}" will enter red phase in 1 minute - deadline approaching!`
-              };
-              
-              // Use notify from the hook called at top level - NOT inside callback [^28^][^31^]
-              notify(titles[phaseName], {
-                body: messages[phaseName],
-                type: phaseName === 'red' ? 'urgent' : 'warning',
-                data: { assignmentId: assignment._id, phase: phaseName, pre: true }
-              });
-              
-              setNotifiedPhases(prev => new Set([...prev, preNotificationId]));
-            }
-          }
-        };
-
-        checkPhase(greenDate, 'green', false);
-        checkPhase(yellowDate, 'yellow', true);
-        checkPhase(redDate, 'red', true);
+      notifications.forEach(notif => {
+        if (notif.read) return;
+        
+        const timeSinceNotif = now - new Date(notif.time);
+        if (timeSinceNotif >= 0 && timeSinceNotif < 300000) {
+          sendToIoTBox({
+            type: 'deadline',
+            subject: notif.assignment.subject,
+            task: notif.assignment.task,
+            phase: notif.phase,
+            urgency: notif.phase === 'red' ? 'URGENT' : notif.phase === 'yellow' ? 'WARNING' : 'INFO'
+          });
+        }
       });
     };
 
-    checkDeadlines();
-    const interval = setInterval(checkDeadlines, 10000);
-    
+    sendAlerts();
+    const interval = setInterval(sendAlerts, 30000);
     return () => clearInterval(interval);
-  }, [assignments, notifyDeadline, notifiedPhases, tick, notify]); // Added notify to dependencies
+  }, [notifications, isConnected, sendToIoTBox]);
+
+  const handleRequestPermission = async () => {
+    const granted = await requestPermission();
+    console.log('Permission request result:', granted);
+  };
 
   const markAsRead = (id) => {
     setNotifications(prev => 
@@ -159,10 +139,10 @@ export default function NotificationBell({ assignments }) {
     setUnreadCount(0);
   };
 
-  const clearAll = () => {
+  const clearAll = async () => {
     setNotifications([]);
     setUnreadCount(0);
-    setNotifiedPhases(new Set());
+    await cancelAllNotifications();
   };
 
   const getPhaseColor = (phase) => {
@@ -183,18 +163,30 @@ export default function NotificationBell({ assignments }) {
     }
   };
 
+  // Get connection icon based on active connection type
+  const getConnectionIcon = () => {
+    if (!isConnected) {
+      return <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300" />;
+    }
+    if (activeConnection === 'wifi') {
+      return <Wifi className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />;
+    }
+    return <Bluetooth className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />;
+  };
+
+  // Get connection label for display
+  const getConnectionLabel = () => {
+    if (!isConnected) return null;
+    return activeConnection === 'wifi' ? '(WiFi Active)' : '(BT Active)';
+  };
+
   return (
     <div className="relative">
-      {/* Bell Button - smaller on mobile */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-1.5 sm:p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
-        {permission === 'granted' ? (
-          <BellRing className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300" />
-        ) : (
-          <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300" />
-        )}
+        {getConnectionIcon()}
         
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 text-white text-[10px] sm:text-xs font-bold rounded-full flex items-center justify-center animate-bounce">
@@ -203,25 +195,51 @@ export default function NotificationBell({ assignments }) {
         )}
       </button>
 
-      {/* FIXED: Mobile-responsive Dropdown */}
       {isOpen && (
         <div className="fixed sm:absolute right-0 sm:right-0 left-0 sm:left-auto top-14 sm:top-auto sm:mt-2 mx-2 sm:mx-0 sm:w-80 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-200 dark:border-gray-700 z-50 overflow-hidden max-h-[80vh] sm:max-h-none">
-          {/* Header - more compact on mobile */}
+          
+          {/* Permission Prompt - FIXED: uses showPrompt from hook */}
+          {showPrompt && (
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800">
+              <div className="flex items-start gap-2">
+                <Smartphone className="w-4 h-4 text-blue-600 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-xs text-blue-800 dark:text-blue-200 font-medium">
+                    Enable system notifications?
+                  </p>
+                  <p className="text-[10px] text-blue-600 dark:text-blue-300 mt-0.5">
+                    Get alerts even when app is closed
+                  </p>
+                  <button
+                    onClick={handleRequestPermission}
+                    className="mt-2 text-xs bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700 transition-colors"
+                  >
+                    Allow
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Native Notification Status */}
+          {permissionGranted && (
+            <div className="px-3 py-1.5 bg-green-50 dark:bg-green-900/20 border-b border-green-100 dark:border-green-800 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+              <span className="text-[10px] text-green-700 dark:text-green-300">
+                System notifications active
+              </span>
+            </div>
+          )}
+
           <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
             <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2 text-sm sm:text-base">
               <Bell className="w-4 h-4" />
               Notifications
+              {isConnected && (
+                <span className="text-xs text-blue-500 ml-1">{getConnectionLabel()}</span>
+              )}
             </h3>
             <div className="flex items-center gap-1">
-              {isSupported && permission !== 'granted' && (
-                <button
-                  onClick={requestPermission}
-                  className="p-1.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 transition-colors"
-                  title="Enable browser notifications"
-                >
-                  <BellOff className="w-3 h-3" />
-                </button>
-              )}
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
@@ -241,15 +259,19 @@ export default function NotificationBell({ assignments }) {
             </div>
           </div>
 
-          {/* Notification List - adjusted max height for mobile */}
           <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
               <div className="p-6 sm:p-8 text-center text-gray-500 dark:text-gray-400">
                 <Bell className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-3 opacity-20" />
                 <p className="text-sm">No notifications yet</p>
                 <p className="text-xs mt-1 opacity-75">
-                  Deadline alerts will appear here
+                  {isConnected ? "Alerts will be sent to your IoT box" : "Connect IoT box for physical alerts"}
                 </p>
+                {permissionGranted && (
+                  <p className="text-xs mt-1 text-green-600">
+                    System notifications enabled
+                  </p>
+                )}
               </div>
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -292,7 +314,6 @@ export default function NotificationBell({ assignments }) {
             )}
           </div>
 
-          {/* Footer */}
           <div className="p-2 sm:p-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-center">
             <button
               onClick={() => setIsOpen(false)}
@@ -304,7 +325,6 @@ export default function NotificationBell({ assignments }) {
         </div>
       )}
 
-      {/* Click outside to close - full screen overlay on mobile */}
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/20 sm:bg-transparent"

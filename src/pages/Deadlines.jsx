@@ -9,14 +9,11 @@ import {
   Save, 
   X, 
   AlertTriangle,
-  Filter,
   Search,
-  MoreVertical,
-  ChevronDown,
   Loader2
 } from "lucide-react";
 
-export default function Deadlines({ list, setList, alertAudio, credential }) {
+export default function Deadlines({ list, setList, alertAudio }) {
   const [filter, setFilter] = useState("today");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -29,12 +26,10 @@ export default function Deadlines({ list, setList, alertAudio, credential }) {
   const [updatingIds, setUpdatingIds] = useState([]);
   const playedIds = useRef(new Set());
 
-  // Update loading state
   useEffect(() => {
     if (Array.isArray(list)) setLoading(false);
   }, [list]);
 
-  // Get deadline status
   const getStatus = (item) => {
     if (item.status === "completed") return { type: "completed", label: "Completed", color: "emerald" };
     
@@ -47,7 +42,6 @@ export default function Deadlines({ list, setList, alertAudio, credential }) {
     return { type: "upcoming", label: "Upcoming", color: "gray" };
   };
 
-  // Filter and search assignments
   const filteredList = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -58,7 +52,6 @@ export default function Deadlines({ list, setList, alertAudio, credential }) {
         const greenDate = new Date(deadlines.green);
         const redDate = new Date(deadlines.red);
         
-        // Search filter
         if (searchQuery) {
           const query = searchQuery.toLowerCase();
           const matchesSearch = 
@@ -67,7 +60,6 @@ export default function Deadlines({ list, setList, alertAudio, credential }) {
           if (!matchesSearch) return false;
         }
 
-        // Status filter
         if (filter === "today") {
           return item.status !== "completed" && redDate >= today && greenDate <= new Date(today.getTime() + 24 * 60 * 60 * 1000);
         }
@@ -77,7 +69,6 @@ export default function Deadlines({ list, setList, alertAudio, credential }) {
         return true;
       })
       .sort((a, b) => {
-        // Sort by urgency
         const aRed = new Date(a.deadlines?.red || a.deadline);
         const bRed = new Date(b.deadlines?.red || b.deadline);
         if (a.status === "completed" && b.status !== "completed") return 1;
@@ -86,7 +77,6 @@ export default function Deadlines({ list, setList, alertAudio, credential }) {
       });
   }, [list, filter, searchQuery]);
 
-  // Stats
   const stats = useMemo(() => ({
     total: list?.length || 0,
     completed: list?.filter(i => i.status === "completed").length || 0,
@@ -97,56 +87,24 @@ export default function Deadlines({ list, setList, alertAudio, credential }) {
     }).length || 0
   }), [list]);
 
-  // Toggle completion - FIXED: Changed from PUT to PATCH
-  const toggleDone = async (item) => {
+  // Toggle completion - LOCAL ONLY
+  const toggleDone = (item) => {
     setUpdatingIds(prev => [...prev, item._id]);
     const newStatus = item.status === "completed" ? "upcoming" : "completed";
     
-    // Optimistic update
     setList(prev => prev.map(i => i._id === item._id ? { ...i, status: newStatus } : i));
 
-    try {
-      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, {
-        method: "PATCH",  // <-- FIXED: Changed from PUT to PATCH
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${credential}`
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (!res.ok) throw new Error("Failed to update");
-    } catch (err) {
-      // Revert on error
-      setList(prev => prev.map(i => i._id === item._id ? { ...i, status: item.status } : i));
-      alert("Failed to update status");
-    } finally {
+    setTimeout(() => {
       setUpdatingIds(prev => prev.filter(id => id !== item._id));
-    }
+    }, 300);
   };
 
-  // Delete task
-  const deleteTask = async (item) => {
+  // Delete task - LOCAL ONLY
+  const deleteTask = (item) => {
     if (!confirm(`Delete "${item.task}"?`)) return;
-    
-    setUpdatingIds(prev => [...prev, item._id]);
-    
-    try {
-      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${item._id}`, { 
-        method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${credential}`
-        }
-      });
-      if (!res.ok) throw new Error("Failed to delete");
-      setList(prev => prev.filter(i => i._id !== item._id));
-    } catch (err) {
-      alert("Failed to delete assignment");
-    } finally {
-      setUpdatingIds(prev => prev.filter(id => id !== item._id));
-    }
+    setList(prev => prev.filter(i => i._id !== item._id));
   };
 
-  // Edit functions
   const startEdit = (item) => {
     setEditingId(item._id);
     setEditData({
@@ -160,35 +118,18 @@ export default function Deadlines({ list, setList, alertAudio, credential }) {
     });
   };
 
-  // Save edit - FIXED: Changed from PUT to PATCH and handle response properly
-  const saveEdit = async (id) => {
+  // Save edit - LOCAL ONLY
+  const saveEdit = (id) => {
     setUpdatingIds(prev => [...prev, id]);
     
-    try {
-      const res = await fetch(`https://smart-assignment-app.onrender.com/api/assignments/${id}`, {
-        method: "PATCH",  // <-- FIXED: Changed from PUT to PATCH
-        headers: { 
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${credential}`
-        },
-        body: JSON.stringify(editData),
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({ error: "Unknown error" }));
-        throw new Error(errorData.error || "Failed to save");
-      }
-      
-      const result = await res.json();
-      // Handle both {data: item} and direct item response
-      const updatedItem = result.data || result;
-      setList(prev => prev.map(item => item._id === id ? updatedItem : item));
-      setEditingId(null);
-    } catch (err) {
-      alert("Failed to save edits: " + err.message);
-    } finally {
-      setUpdatingIds(prev => prev.filter(i => i !== id));
-    }
+    setList(prev => prev.map(item => 
+      item._id === id 
+        ? { ...item, ...editData }
+        : item
+    ));
+    
+    setEditingId(null);
+    setUpdatingIds(prev => prev.filter(i => i !== id));
   };
 
   const cancelEdit = () => {
@@ -196,7 +137,6 @@ export default function Deadlines({ list, setList, alertAudio, credential }) {
     setEditData({ subject: "", task: "", deadlines: { green: "", yellow: "", red: "" } });
   };
 
-  // Format relative time
   const getRelativeTime = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -311,7 +251,6 @@ export default function Deadlines({ list, setList, alertAudio, credential }) {
                 }`}
               >
                 {isEditing ? (
-                  // Edit Mode
                   <div className="space-y-4">
                     <input
                       type="text"
@@ -366,7 +305,6 @@ export default function Deadlines({ list, setList, alertAudio, credential }) {
                     </div>
                   </div>
                 ) : (
-                  // View Mode
                   <>
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
@@ -390,7 +328,6 @@ export default function Deadlines({ list, setList, alertAudio, credential }) {
                           {item.task}
                         </p>
 
-                        {/* Timeline */}
                         <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                           <div className="flex items-center gap-1">
                             <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -409,7 +346,6 @@ export default function Deadlines({ list, setList, alertAudio, credential }) {
                         </div>
                       </div>
 
-                      {/* Actions */}
                       <div className="flex flex-col gap-2">
                         <button
                           onClick={() => toggleDone(item)}
