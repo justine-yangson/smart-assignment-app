@@ -9,9 +9,7 @@ import {
   Bell,
   BellOff,
   ChevronRight,
-  Info,
-  Bluetooth,
-  BluetoothOff
+  Info
 } from "lucide-react";
 
 export default function SettingsDrawer({
@@ -25,7 +23,6 @@ export default function SettingsDrawer({
   disableAutoDark,
   alertsEnabled,
   toggleAlerts,
-  isConnected,
 }) {
   const autoDark = localStorage.getItem("autoDark") === "true";
 
@@ -65,19 +62,6 @@ export default function SettingsDrawer({
           onClick: handleAutoDarkToggle,
           active: autoDark,
           color: "text-blue-500"
-        }
-      ]
-    },
-    {
-      section: "IoT Box",
-      items: [
-        {
-          icon: isConnected ? Bluetooth : BluetoothOff,
-          label: isConnected ? "Box Connected" : "Box Disconnected",
-          description: isConnected ? "IoT box is ready" : "Connect your IoT box",
-          onClick: () => {},
-          active: isConnected,
-          color: isConnected ? "text-blue-500" : "text-gray-400"
         }
       ]
     },

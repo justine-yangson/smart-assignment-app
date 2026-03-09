@@ -8,30 +8,40 @@ export function useIoTBox() {
 
   // Connect - WiFi only
   const connect = useCallback(async () => {
-    console.log('Scanning for ESP32 on WiFi...');
+    // FORCE DEBUG
+    alert('useIoTBox: connect() called!');
+    console.log('=== useIoTBox: connect() STARTED ===');
+    
     const wifiSuccess = await wifi.scanForBox();
+    
+    alert('useIoTBox: scan result = ' + wifiSuccess);
+    console.log('=== useIoTBox: scan result =', wifiSuccess);
+    
     if (wifiSuccess) {
       setActiveConnection('wifi');
-      console.log('Connected via WiFi!');
+      alert('✓ Connected via WiFi!');
       return true;
     }
-    console.log('WiFi connection failed');
+    alert('✗ Connection failed');
     return false;
   }, [wifi]);
 
   // Disconnect
   const disconnect = useCallback(() => {
+    alert('useIoTBox: disconnect() called!');
+    console.log('=== useIoTBox: disconnect() ===');
     wifi.disconnect();
     setActiveConnection(null);
   }, [wifi]);
 
   // Send notification
   const sendNotification = useCallback(async (data) => {
+    console.log('=== useIoTBox: sendNotification ===');
     if (!wifi.isConnected) {
-      console.log('No WiFi connection, trying to connect...');
+      console.log('Not connected, trying to connect...');
       const connected = await connect();
       if (!connected) {
-        console.error('Failed to connect to ESP32');
+        console.error('Failed to connect');
         return false;
       }
     }

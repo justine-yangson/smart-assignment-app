@@ -194,13 +194,13 @@ function AppContent() {
             {/* Right: Actions */}
             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               {/* IoT Box Button (WiFi + Bluetooth) */}
-              <IoTBoxButton 
-                isConnected={isConnected}
-                isScanning={isScanning}
-                activeConnection={activeConnection}
-                onConnect={connect}
-                onDisconnect={disconnect}
-              />
+            <IoTBoxButton 
+              isConnected={isConnected}
+              isScanning={isScanning}
+              error={error}
+              onConnect={connect}
+               onDisconnect={disconnect}
+            />
               
               {/* Notification Bell */}
               <NotificationBell assignments={list} isConnected={isConnected} />
@@ -295,7 +295,6 @@ function AppContent() {
           disableAutoDark={disableAutoDark}
           alertsEnabled={alertsEnabled}
           toggleAlerts={toggleAlerts}
-          isConnected={isConnected}
         />
       </div>
     </div>

@@ -9,51 +9,54 @@ export function useWiFiBox() {
 
   // Scan for ESP32 on local network
   const scanForBox = useCallback(async () => {
+    console.log('=== Starting WiFi Scan ===');
     setIsScanning(true);
     setError(null);
     
-    // Get local IP prefix
-    const getLocalPrefix = () => {
-      // Try to get from common router IPs
-      return '192.168.1';
-    };
+    // Try multiple common IP ranges
+    const prefixes = ['192.168.1', '192.168.0', '10.0.0'];
+    let foundIP = null;
     
-    const prefix = getLocalPrefix();
-    const foundIPs = [];
-    
-    // Scan IP range 1-50
-    for (let i = 1; i <= 50; i++) {
-      const ip = `${prefix}.${i}`;
+    for (const prefix of prefixes) {
+      if (foundIP) break;
       
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 500);
+      console.log('Scanning range:', prefix + '.1 to ' + prefix + '.50');
+      
+      for (let i = 1; i <= 50; i++) {
+        const ip = `${prefix}.${i}`;
         
-        const response = await fetch(`http://${ip}/status`, {
-          method: 'GET',
-          signal: controller.signal
-        }).catch(() => null);
-        
-        clearTimeout(timeoutId);
-        
-        if (response && response.ok) {
-          foundIPs.push(ip);
-          console.log('Found ESP32 at:', ip);
-          break; // Stop at first found
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 800);
+          
+          const response = await fetch(`http://${ip}/status`, {
+            method: 'GET',
+            signal: controller.signal
+          }).catch(() => null);
+          
+          clearTimeout(timeoutId);
+          
+          if (response && response.ok) {
+            console.log('✓ Found ESP32 at:', ip);
+            foundIP = ip;
+            break;
+          }
+        } catch (e) {
+          // Expected for most IPs
         }
-      } catch (e) {
-        // Timeout or error, continue
       }
     }
     
     setIsScanning(false);
     
-    if (foundIPs.length > 0) {
-      setBoxIP(foundIPs[0]);
+    if (foundIP) {
+      console.log('✓ Connected to:', foundIP);
+      setBoxIP(foundIP);
       setIsConnected(true);
-      return foundIPs[0];
+      return foundIP;
     } else {
-      setError('ESP32 not found on network');
+      console.log('✗ No ESP32 found');
+      setError('ESP32 not found. Check WiFi and that ESP32 is on same network.');
       return null;
     }
   }, []);
@@ -62,6 +65,8 @@ export function useWiFiBox() {
   const connect = useCallback(async (ip) => {
     try {
       setError(null);
+      console.log('Connecting to specific IP:', ip);
+      
       const response = await fetch(`http://${ip}/status`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
@@ -83,6 +88,7 @@ export function useWiFiBox() {
 
   // Disconnect
   const disconnect = useCallback(() => {
+    console.log('Disconnecting from ESP32');
     setIsConnected(false);
     setBoxIP(null);
     setError(null);
@@ -96,6 +102,8 @@ export function useWiFiBox() {
     }
 
     try {
+      console.log('Sending notification to:', boxIP, data);
+      
       const response = await fetch(`http://${boxIP}/notify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -121,6 +129,7 @@ export function useWiFiBox() {
   useEffect(() => {
     const savedIP = localStorage.getItem('esp32_ip');
     if (savedIP) {
+      console.log('Auto-reconnecting to saved IP:', savedIP);
       connect(savedIP);
     }
     
