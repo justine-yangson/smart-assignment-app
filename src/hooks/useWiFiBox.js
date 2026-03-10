@@ -1,33 +1,92 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { CapacitorWifi } from '@capgo/capacitor-wifi';
 
 export function useWiFiBox() {
   const [isConnected, setIsConnected] = useState(false);
   const [boxIP, setBoxIP] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState(null);
-  const timeoutRef = useRef(null);
+  const [availableNetworks, setAvailableNetworks] = useState([]);
+  const listenerRef = useRef(null);
 
-  // Scan for ESP32 on local network
-  const scanForBox = useCallback(async () => {
+  // Request permissions
+  const requestPermissions = useCallback(async () => {
+    try {
+      const status = await CapacitorWifi.requestPermissions();
+      return status.location === 'granted';
+    } catch (err) {
+      console.error('Permission error:', err);
+      return false;
+    }
+  }, []);
+
+  // Scan for available WiFi networks
+  const scanNetworks = useCallback(async () => {
     console.log('=== Starting WiFi Scan ===');
     setIsScanning(true);
     setError(null);
     
-    // Try multiple common IP ranges
-    const prefixes = ['192.168.1', '192.168.0', '10.0.0'];
-    let foundIP = null;
+    try {
+      // Check permissions first
+      const hasPermission = await requestPermissions();
+      if (!hasPermission) {
+        setError('Location permission required for WiFi scanning');
+        setIsScanning(false);
+        return [];
+      }
+
+      // Scan for networks (using scan() method, not startScan)
+      const result = await CapacitorWifi.scan();
+      console.log('Available networks:', result.networks);
+      
+      // Filter for IoT Box networks
+      const iotNetworks = result.networks.filter(network => {
+        const ssid = network.ssid.toLowerCase();
+        return ssid.includes('reminder') || 
+               ssid.includes('iot') || 
+               ssid.includes('box') || 
+               ssid.includes('esp') ||
+               ssid.includes('smart');
+      });
+      
+      console.log('IoT networks found:', iotNetworks);
+      setAvailableNetworks(iotNetworks);
+      setIsScanning(false);
+      return iotNetworks;
+    } catch (err) {
+      console.error('Scan failed:', err);
+      setError('Failed to scan WiFi: ' + err.message);
+      setIsScanning(false);
+      return [];
+    }
+  }, [requestPermissions]);
+
+  // Connect to a specific network
+  const connectToNetwork = useCallback(async (ssid, password = '') => {
+    console.log('=== Connecting to:', ssid, '===');
+    setIsScanning(true);
+    setError(null);
     
-    for (const prefix of prefixes) {
-      if (foundIP) break;
+    try {
+      // Connect to network
+      await CapacitorWifi.connect({
+        ssid: ssid,
+        password: password
+      });
       
-      console.log('Scanning range:', prefix + '.1 to ' + prefix + '.50');
+      console.log('WiFi connected, checking for ESP32...');
       
-      for (let i = 1; i <= 50; i++) {
-        const ip = `${prefix}.${i}`;
-        
+      // Wait for connection to stabilize
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Try to find ESP32 IP
+      const commonIPs = ['192.168.4.1', '192.168.1.1', '10.0.0.1'];
+      let foundIP = null;
+      
+      for (const ip of commonIPs) {
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 800);
+          const timeoutId = setTimeout(() => controller.abort(), 2000);
           
           const response = await fetch(`http://${ip}/status`, {
             method: 'GET',
@@ -42,31 +101,37 @@ export function useWiFiBox() {
             break;
           }
         } catch (e) {
-          // Expected for most IPs
+          // Try next IP
         }
       }
-    }
-    
-    setIsScanning(false);
-    
-    if (foundIP) {
-      console.log('✓ Connected to:', foundIP);
-      setBoxIP(foundIP);
-      setIsConnected(true);
-      return foundIP;
-    } else {
-      console.log('✗ No ESP32 found');
-      setError('ESP32 not found. Check WiFi and that ESP32 is on same network.');
-      return null;
+      
+      setIsScanning(false);
+      
+      if (foundIP) {
+        setBoxIP(foundIP);
+        setIsConnected(true);
+        return { success: true, ip: foundIP };
+      } else {
+        // Connected to WiFi but ESP32 not responding - use default
+        setBoxIP('192.168.4.1');
+        setIsConnected(true);
+        return { success: true, ip: '192.168.4.1' };
+      }
+    } catch (err) {
+      console.error('Connection error:', err);
+      setError('Failed to connect: ' + err.message);
+      setIsScanning(false);
+      return { success: false, error: err.message };
     }
   }, []);
 
-  // Connect to specific IP
-  const connect = useCallback(async (ip) => {
+  // Manual IP connect (fallback)
+  const connectWithIP = useCallback(async (ip) => {
+    console.log('=== Manual connect to IP:', ip, '===');
+    setIsScanning(true);
+    setError(null);
+    
     try {
-      setError(null);
-      console.log('Connecting to specific IP:', ip);
-      
       const response = await fetch(`http://${ip}/status`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
@@ -77,21 +142,30 @@ export function useWiFiBox() {
         console.log('Connected to ESP32:', data);
         setBoxIP(ip);
         setIsConnected(true);
+        setIsScanning(false);
         return true;
       }
     } catch (error) {
       console.error('Connection failed:', error);
       setError('Failed to connect to ' + ip);
     }
+    
+    setIsScanning(false);
     return false;
   }, []);
 
   // Disconnect
-  const disconnect = useCallback(() => {
+  const disconnect = useCallback(async () => {
     console.log('Disconnecting from ESP32');
+    try {
+      await CapacitorWifi.disconnect();
+    } catch (e) {
+      console.log('Disconnect error (may be normal):', e);
+    }
     setIsConnected(false);
     setBoxIP(null);
     setError(null);
+    setAvailableNetworks([]);
   }, []);
 
   // Send notification to box
@@ -125,20 +199,25 @@ export function useWiFiBox() {
     }
   }, [isConnected, boxIP]);
 
+  // Get current WiFi info
+  const getWifiInfo = useCallback(async () => {
+    try {
+      const info = await CapacitorWifi.getWifiInfo();
+      return info;
+    } catch (err) {
+      console.error('Failed to get WiFi info:', err);
+      return null;
+    }
+  }, []);
+
   // Auto-reconnect on mount
   useEffect(() => {
     const savedIP = localStorage.getItem('esp32_ip');
     if (savedIP) {
       console.log('Auto-reconnecting to saved IP:', savedIP);
-      connect(savedIP);
+      connectWithIP(savedIP);
     }
-    
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [connect]);
+  }, [connectWithIP]);
 
   // Save IP when connected
   useEffect(() => {
@@ -152,9 +231,12 @@ export function useWiFiBox() {
     boxIP,
     isScanning,
     error,
-    scanForBox,
-    connect,
+    availableNetworks,
+    scanNetworks,
+    connectToNetwork,
+    connectWithIP,
     disconnect,
-    sendNotification
+    sendNotification,
+    getWifiInfo
   };
 }

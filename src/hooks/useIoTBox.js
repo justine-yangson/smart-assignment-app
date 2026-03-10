@@ -7,19 +7,30 @@ export function useIoTBox() {
   const wifi = useWiFiBox();
 
   // Connect - WiFi only
-  const connect = useCallback(async () => {
-    // FORCE DEBUG
+  const connect = useCallback(async (manualIP) => {
     alert('useIoTBox: connect() called!');
     console.log('=== useIoTBox: connect() STARTED ===');
     
-    const wifiSuccess = await wifi.scanForBox();
+    let result;
+    if (manualIP) {
+      result = await wifi.connectWithIP(manualIP);
+    } else {
+      // Try auto-connect to first available network
+      const networks = await wifi.scanNetworks();
+      if (networks.length > 0) {
+        result = await wifi.connectToNetwork(networks[0].ssid);
+      } else {
+        alert('No IoT Box found. Please connect manually.');
+        return false;
+      }
+    }
     
-    alert('useIoTBox: scan result = ' + wifiSuccess);
-    console.log('=== useIoTBox: scan result =', wifiSuccess);
+    alert('useIoTBox: result = ' + JSON.stringify(result));
+    console.log('=== useIoTBox: result =', result);
     
-    if (wifiSuccess) {
+    if (result && result.success) {
       setActiveConnection('wifi');
-      alert('✓ Connected via WiFi!');
+      alert('✓ Connected!');
       return true;
     }
     alert('✗ Connection failed');
@@ -52,9 +63,12 @@ export function useIoTBox() {
     isConnected: wifi.isConnected,
     isScanning: wifi.isScanning,
     error: wifi.error,
+    availableNetworks: wifi.availableNetworks,
     activeConnection,
     connect,
     disconnect,
-    sendNotification
+    sendNotification,
+    scanNetworks: wifi.scanNetworks,
+    connectToNetwork: wifi.connectToNetwork
   };
 }

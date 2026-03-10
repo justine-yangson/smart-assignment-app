@@ -33,10 +33,13 @@ function AppContent() {
     isConnected, 
     isScanning,
     activeConnection,
-    error,  // ADD THIS
+    error,
+    availableNetworks,
     connect, 
     disconnect, 
-    sendNotification 
+    sendNotification,
+    scanNetworks,
+    connectToNetwork
   } = useIoTBox();
 
   // Alert system - for IoT Box notifications
@@ -194,13 +197,16 @@ function AppContent() {
             {/* Right: Actions */}
             <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
               {/* IoT Box Button (WiFi + Bluetooth) */}
-            <IoTBoxButton 
-              isConnected={isConnected}
-              isScanning={isScanning}
-              error={error}
-              onConnect={connect}
-               onDisconnect={disconnect}
-            />
+              <IoTBoxButton 
+                isConnected={isConnected}
+                isScanning={isScanning}
+                error={error}
+                availableNetworks={availableNetworks}
+                onConnect={connect}
+                onDisconnect={disconnect}
+                onScanNetworks={scanNetworks}
+                onConnectToNetwork={connectToNetwork}
+              />
               
               {/* Notification Bell */}
               <NotificationBell assignments={list} isConnected={isConnected} />
